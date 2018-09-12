@@ -1,0 +1,246 @@
+################################################################################
+
+Java database assignment - Report
+Candidate: 32356
+
+################################################################################
+
+
+~~ Graphics Library: ~~
+JavaFX
+
+~~ Tools Used: ~~
+Editors - 'Visual Studio Code' (Not the full IDE, the lightweight text editor. 
+        Linux or Windows Version depending of what system I'm using),
+        gedit (for quick edits)
+
+Version Control - Git (Cloud services such as Github not used, instead the whole
+        project was stored on a synched dropbox folder)
+
+Audio generation - bfxr sfx generator http://www.bfxr.net/
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Initial Idea:
+
+My initial idea was to create an audiovisual playground that would allow users
+to create simple tunes by clicking on animated shapes that would make different
+tones which could be chained together.
+The playground would be set in space, where the player could click on
+interactive animated "Planets" that would emit a sound, and drag smaller Planets
+or "moon" shapes, nearby to change the emitted sound.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Development Log: 
+
+Below is a chronological summary of some choices and changes made to the design
+of the program that I deemed notable, sections are seperated by a line
+of ###s
+
+Key features of the program and resource references are located at the end of
+the document.
+
+################################################################################
+
+The basic functionality of a planetarium was created in a single class.
+This included creating Circcle objects that could be set to orbit
+around a set x and y coordinate. The speed or orbit could be specified
+
+This was achieved with the following methods :
+""
+    // Animation/Game loop
+    final long initNanoTime = System.nanoTime();
+    AnimationTimer timer = new AnimationTimer() {
+        public void handle(long now) {
+            double time = (now - initNanoTime) / 1000000000.0;
+            onUpdate(time);
+        }
+    };
+
+    // What happens when the game loop updates
+    private void onUpdate(double time) {
+        orbit(p1, 640, 360, 100, 0.5, time);
+    }
+
+    private void orbit(Circle planet, int orbitCenterX, int orbitCenterY, int orbitRadius, double speedModifier, double time) {
+        planet.setCenterX(orbitCenterX + (orbitRadius * Math.cos(time * speedModifier)));
+        planet.setCenterY(orbitCenterY + (orbitRadius * Math.sin(time * speedModifier)));
+    }
+""
+
+################################################################################
+
+A Planet class was then created containing all that is needed to contol movement,
+colour and size of the planets.
+
+The basic functionality included mouse events and methods to create a specified
+orbit animation.
+This class contained all the functionality needed to do single orbits as well
+as orbits of orbiting planets.
+It was as follows:
+""
+class Planet {
+    Circle planet = new Circle();
+    int radius;
+    Planet(int radius, Color fillColor) {
+        planet.setFill(fillColor);
+        planet.setRadius(radius);
+        this.radius = radius;
+    }
+
+    void onMouseEntered() {
+        planet.setRadius(radius * 1.5);
+    }
+
+    void onMouseExit() {
+        planet.setRadius(radius);
+    }
+
+    void onMouseClicked() {
+        AudioClip sound = new AudioClip(this.getClass().getResource("/testaudio.wav").toString());
+        sound.play();
+    }
+
+    // Placed in game loop to calculate the orbit of a planet around a set point
+    void orbit(double orbitCenterX, double orbitCenterY, int orbitRadius, double speedModifier, double time) {
+        planet.setCenterX(orbitCenterX + (orbitRadius * Math.cos(time * speedModifier)));
+        planet.setCenterY(orbitCenterY + (orbitRadius * Math.sin(time * speedModifier)));
+    }
+
+    Circle getNode() {
+        return planet;
+    }
+}
+""
+
+This oprit feature includes the option to set the orbit x any y coordinatesm
+the speed at which the orbit occurs and the radius of the orbit around the
+specidfied coordinates.
+
+When making this class, all the information needed for an orbit were initially 
+put into the constructor, however, this made extracting the center coordinates
+of the planet very difficult.
+
+With the above method, the orbiting of planets that are already in orbit can be 
+done as follows: (Planet "pOrbit" orbiting Planet "p")
+""
+pOrbit.orbit(p.getNode().getCenterX(), p.getNode().getCenterY(), 50, 2.0, time);
+""
+
+################################################################################
+
+Major refactoring was done at this stage.
+Currently, there are many actions that are repeated on Planet objects which
+take up laerge spaces of non-DRY code eg:
+""
+        //Initialise Mouse Events
+        p.onMouseEntered();
+        p.onMouseExit();
+        p.onMouseClicked();
+
+        pOrbit.onMouseEntered();
+        pOrbit.onMouseExit();
+        pOrbit.onMouseClicked();
+
+        p1.onMouseEntered();
+        p1.onMouseExit();
+        p1.onMouseClicked();
+""
+This was solved by creating an arraylist of the Planet objects thtat can be
+looped through applying the methods to each object. eg:
+""
+    //Initialise planet arraylist
+    private ArrayList<Planet> planetList = new ArrayList<Planet>();
+
+    ...
+    ...
+
+        //Add Planet Objects to planetList
+        planetList.add(p);
+        planetList.add(pOrbit);
+
+        planetList.add(p1);
+        planetList.add(p1Orbit);
+        planetList.add(p1OrbitOrbit);
+        
+
+        //Initialise Mouse Events
+        for (int i = 0; i < planetList.size(); i++) {
+            planetList.get(i).onMouseEntered();
+            planetList.get(i).onMouseExit();
+            planetList.get(i).onMouseClicked();
+        } 
+""
+
+################################################################################
+
+At this point I began working on making the backgorund more interesting.
+I settled on trying to make an effect of some animated stars in the background.
+
+The stars would each be a Star object that consited of a small rectangle with
+methods to animate a "sparkling" effect.
+
+On startup, the program scatters stars across the scene from an array of Star
+objects. The amount of stars can be specifed with the constant
+final int NUMBER_OF_STARS .
+Over time, random stars stored in an ArrayList are chosen to "sparkle" by
+increasing their dimension.
+
+The effect was initially too crude, so an intermediate "darken()" method was
+added to create more variations in the starfield.
+
+
+################################################################################
+
+At this point I decided to create  movable objects on screen that when collided 
+with the moving planets would cause a tone to be played.
+This would allow users to create tunes of the different sounds by simply 
+arranging the collidable objects in different positions on screen.
+
+To accomplish this I created the PlayBlock class.
+This class allows the generation of a rectangle on screen that can be dragged
+around.
+
+Within the allocated time collsions were not implemented, so the current
+prototype as subimtted has draggable rectangles starting at the left side of
+the screen, but with no sound functionality on collision with planets.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+NOTABLE FEATURES:
+
+- Hovering over planets with mouse cursor expands the planet.
+
+- Mouse cursor changes to a drag cursor when hovering over draggable objects
+    and a hand pointing cursor when hovering over clockable objects.
+
+- Clicking on plants plays a sound (different sound on each planet, it can be a
+    challenge to click on all of them)
+
+- Square shapes on scree can be dragged around. 
+    (planned for this to enable players to create tunes with squares placed in
+    creative ways that play tunes when colliding with planets)
+
+- Planet objects can be set to orbit around any set coordinates or other planets
+
+- Animated image in center of window is an imported .gif
+
+- Stars are placed randomly on startup and have a subtle twinkle effect
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+References:
+
+singularity.gif taken from
+    https://giphy.com/gifs/transparent-vincemckelvie-f0FBDZwjvpKBa/
+
+Sounds generated using http://www.bfxr.net/
+
+Click and drag functionality adapted from tutorials from
+https://java-buddy.blogspot.co.uk/
+(NOTE: all code was written by hand and where code is borrowed, it is adapted
+to work with my own class structure)
+
+
+-------------------------------END OF DOCUMENT----------------------------------
